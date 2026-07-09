@@ -1,0 +1,23 @@
+{
+  "name": "hello-time",
+  "author": "petter",
+  "version": "1.0.0",
+  "keywords": ["pebble-app"],
+  "private": true,
+  "dependencies": {},
+  "pebble": {
+    "displayName": "Hello Time",
+    "uuid": "af085557-26f0-4697-9b52-b2d5e54ee020",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "targetPlatforms": [
+      "basalt"
+    ],
+    "watchapp": {
+      "watchface": true
+    },
+    "resources": {
+      "media": []
+    }
+  }
+}

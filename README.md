@@ -1,10 +1,10 @@
 # Pebble watchfaces & apps
 
-Watchfaces and apps for my **Pebble Time** (platform `basalt`, 144x168 color),
-built with Claude Code and the [pebble-watchface agent skill](https://github.com/coredevices/pebble-watchface-agent-skill)
+Watchfaces and apps for my **Pebble Time Round** (platform `chalk`, 180x180
+round color), built with Claude Code and the [pebble-watchface agent skill](https://github.com/coredevices/pebble-watchface-agent-skill)
 (installed in `.claude/skills/pebble-watchface`).
 
-- **Device/target:** Pebble Time → `basalt` (see `CLAUDE.md`)
+- **Device/target:** Pebble Time Round → `chalk` (see `CLAUDE.md`)
 - **Setup:** `./scripts/setup-sdk.sh` (runs automatically in Claude Code web sessions via a SessionStart hook)
 - **Build:** `cd <project> && pebble build` → `build/<project>.pbw`
 - **Install on watch:** sideload the `.pbw` with the Pebble phone app, or `pebble install --phone <ip>`

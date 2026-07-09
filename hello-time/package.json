@@ -11,7 +11,7 @@
     "sdkVersion": "3",
     "enableMultiJS": true,
     "targetPlatforms": [
-      "basalt"
+      "chalk"
     ],
     "watchapp": {
       "watchface": true

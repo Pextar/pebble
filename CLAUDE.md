@@ -1,16 +1,26 @@
 # Pebble Watchfaces & Apps
 
-Personal repo for building watchfaces and apps for a **Pebble Time** (Bluetooth
-name "Pebble Time LE 05A9").
+Personal repo for building watchfaces and apps for a **Pebble Time Round**.
 
 ## Target device — IMPORTANT
 
-The owner's watch is a **Pebble Time**, platform **`basalt`**:
-144x168, rectangular, 64 colors, microphone.
+The owner's watch is a **Pebble Time Round**, platform **`chalk`**:
+180x180, **round**, 64 colors, no microphone (unlike the rectangular Pebble
+Time/`basalt`).
 
-**Always target `basalt` first** — this overrides the `pebble-watchface`
-skill's default of `emery`. Set `"targetPlatforms": ["basalt"]` in each
+**Always target `chalk` first** — this overrides the `pebble-watchface`
+skill's default of `emery`. Set `"targetPlatforms": ["chalk"]` in each
 project's `package.json` (add other platforms only when asked).
+
+Round-display layout notes:
+- Use `PBL_IF_ROUND_ELSE(round_value, rect_value)` / `#if PBL_ROUND` for any
+  layout that needs to differ from a rectangular face — text and shapes near
+  the edges get clipped by the bezel unless inset from the true corners.
+- Prefer centered, radially-symmetric layouts (centered text, circular dials)
+  over corner-anchored UI elements.
+- `GRect`/`layer_get_bounds()` still return a square bounding box (0,0 to
+  180,180) on `chalk` — the round clipping happens at render time, so don't
+  assume a non-square bounds struct.
 
 ## Environment setup
 
@@ -40,7 +50,7 @@ Each watchface/app lives in its own top-level directory (see `hello-time/`).
 
 ## Emulator limitation in this environment
 
-`pebble install --emulator basalt` does NOT work in Claude Code web sessions:
+`pebble install --emulator chalk` does NOT work in Claude Code web sessions:
 the patched `qemu-pebble` binary can't be downloaded (network policy). Skip
 the QEMU/screenshot steps of the `pebble-watchface` skill here — a successful
 `pebble build` plus code review is the verification bar. The `.pbw` in
@@ -50,7 +60,7 @@ the QEMU/screenshot steps of the `pebble-watchface` skill here — a successful
 ## SDK quirks (already handled by setup-sdk.sh)
 
 - SDK core is 4.4 (a Python3-compatible SDK 4.3). No `gabbro`/`flint`
-  platforms, but all classic platforms including `basalt` work.
+  platforms, but all classic platforms including `chalk` work.
 - Headers are patched to typedef `time_t` as `long` (32-bit, matching the
   watch ABI) because the SDK compiles with `-D_TIME_H_` and modern newlib
   doesn't pre-declare `time_t`.

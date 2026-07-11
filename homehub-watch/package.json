@@ -1,0 +1,35 @@
+{
+  "name": "homehub-watch",
+  "author": "petter",
+  "version": "1.0.0",
+  "keywords": ["pebble-app"],
+  "private": true,
+  "dependencies": {},
+  "pebble": {
+    "displayName": "HomeHub",
+    "uuid": "84ceace4-58be-4ab5-b7c8-17904ae626e4",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "targetPlatforms": [
+      "chalk"
+    ],
+    "watchapp": {
+      "watchface": false
+    },
+    "messageKeys": [
+      "REQUEST_SYNC",
+      "SYNC_START",
+      "SYNC_DONE",
+      "ITEM_TYPE",
+      "ITEM_ID",
+      "ITEM_NAME",
+      "ITEM_STATE",
+      "TOGGLE_TYPE",
+      "TOGGLE_ID",
+      "STATUS"
+    ],
+    "resources": {
+      "media": []
+    }
+  }
+}

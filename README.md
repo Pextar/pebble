@@ -6,12 +6,19 @@ round color), built with Claude Code and the [pebble-watchface agent skill](http
 
 - **Device/target:** Pebble Time Round → `chalk` (see `CLAUDE.md`)
 - **Setup:** `./scripts/setup-sdk.sh` (runs automatically in Claude Code web sessions via a SessionStart hook)
-- **Build:** `cd <project> && pebble build` → `build/<project>.pbw`
+- **Build:** `cd watchfaces/<project> && pebble build` → `build/<project>.pbw`
 - **Install on watch:** sideload the `.pbw` with the Pebble phone app, or `pebble install --phone <ip>`
-- **Starter project:** [`hello-time/`](hello-time/) — minimal time+date face
+- **Starter project:** [`watchfaces/hello-time/`](watchfaces/hello-time/) — minimal time+date face
 
-Projects live in top-level directories. Everything below is the upstream skill
-documentation.
+## Layout
+
+- [`watchfaces/`](watchfaces/) — all watchfaces and apps, one directory each
+- [`os/`](os/) — PebbleOS fork pointer: clone script + patches; the firmware
+  source lives in its own GitHub fork and is cloned on demand (see `os/README.md`)
+- `samples/`, `tutorials/` — reference material bundled with the
+  pebble-watchface skill
+
+Everything below is the upstream skill documentation.
 
 ---
 

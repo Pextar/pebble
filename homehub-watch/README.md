@@ -61,6 +61,14 @@ package.json          Project metadata (UUID, platform: chalk, messageKeys)
 wscript               Build rules — usually no need to edit
 ```
 
+## Pebble Round 2 (`gabbro`)
+
+The layout is fully bounds-driven (MenuLayer + a status banner sized from
+`layer_get_bounds()`), so when a gabbro-capable SDK becomes installable in
+this environment, supporting the Round 2 should be just adding `"gabbro"`
+to `targetPlatforms` in `package.json` and rebuilding. See the repo
+`CLAUDE.md` for why gabbro can't be built here yet.
+
 ## Known limitations (v1)
 
 - Scenes, schedules, and timers from HomeHub aren't exposed — only sockets

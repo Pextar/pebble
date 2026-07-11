@@ -7,12 +7,12 @@ Pebbles: a **Pebble Time Round** today, a **Pebble Round 2** on order.
 
 | Device | Platform | Display | Status |
 |---|---|---|---|
-| Pebble Time Round | `chalk` | 180x180 round, 64-color, buttons only | owned — primary target |
+| Pebble Time Round | `chalk` | 180x180 round, 64-color, buttons only, **no microphone** | owned — primary target |
 | Pebble Round 2 (2026) | `gabbro` | 260x260 round, color e-paper, touch + 4 buttons | on order (ships mid-2026) |
 
 **Always target `chalk` first** — this overrides the `pebble-watchface`
 skill's default of `emery`. Set `"targetPlatforms": ["chalk"]` in each
-project's `package.json`.
+project's `package.json` (add other platforms only when asked).
 
 **`gabbro` cannot be built in this environment yet**: the SDK core 4.4
 mirror we install from (`coredevices/sdk-core`, see below) has no `gabbro`

@@ -1,5 +1,11 @@
 var B64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
+// Watch-side limits (keep in sync with homehub.c).
+var MAX_WATCH_ITEMS = 32;
+var MAX_NAME_CHARS = 31;
+var MAX_ID_CHARS = 39;
+var MAX_STATUS_CHARS = 39;
+
 function b64encode(input) {
   var output = '';
   var i = 0;
@@ -20,6 +26,17 @@ function b64encode(input) {
   return output;
 }
 
+// Reduce a JS string to one char per UTF-8 byte so base64 sees real bytes;
+// b64encode/btoa silently corrupt char codes above 255 otherwise.
+function utf8Bytes(str) {
+  return unescape(encodeURIComponent(str));
+}
+
+function base64(str) {
+  var bytes = utf8Bytes(str);
+  return typeof btoa === 'function' ? btoa(bytes) : b64encode(bytes);
+}
+
 function loadConfig() {
   return {
     host: localStorage.getItem('hh_host') || '',
@@ -38,11 +55,7 @@ function authHeader(cfg) {
   if (!cfg.user) {
     return null;
   }
-  return 'Basic ' + b64encode(cfg.user + ':' + cfg.pass);
-}
-
-function sendStatus(text) {
-  Pebble.sendAppMessage({ 'STATUS': text.substring(0, 39) });
+  return 'Basic ' + base64(cfg.user + ':' + cfg.pass);
 }
 
 function apiRequest(cfg, method, path, callback) {
@@ -59,21 +72,24 @@ function apiRequest(cfg, method, path, callback) {
       try {
         callback(null, xhr.responseText ? JSON.parse(xhr.responseText) : null);
       } catch (parseErr) {
-        callback(parseErr);
+        callback(new Error('Bad response'));
       }
     } else {
       callback(new Error('HTTP ' + xhr.status));
     }
   };
   xhr.onerror = function() {
-    callback(new Error('network error'));
+    callback(new Error('No connection'));
   };
   xhr.ontimeout = function() {
-    callback(new Error('timeout'));
+    callback(new Error('Timeout'));
   };
   xhr.send();
 }
 
+// Only one sendAppMessage may be in flight at a time, so EVERYTHING that
+// goes to the watch — items, sync markers, statuses — must pass through
+// this queue. Never call Pebble.sendAppMessage directly.
 var s_queue = [];
 var s_sending = false;
 
@@ -97,43 +113,75 @@ function queueMessage(msg) {
   pump();
 }
 
-function sendItems(sockets, groups) {
-  queueMessage({ 'SYNC_START': 1 });
-  sockets.forEach(function(socket) {
-    queueMessage({
-      'ITEM_TYPE': 0,
-      'ITEM_ID': String(socket.id),
-      'ITEM_NAME': String(socket.name),
-      'ITEM_STATE': socket.state ? 1 : 0
-    });
-  });
-  groups.forEach(function(group) {
-    queueMessage({
-      'ITEM_TYPE': 1,
-      'ITEM_ID': String(group.id),
-      'ITEM_NAME': String(group.name),
-      'ITEM_STATE': 0
-    });
-  });
-  queueMessage({ 'SYNC_DONE': 1 });
-  sendStatus('Connected');
+function sendStatus(text) {
+  queueMessage({ 'STATUS': String(text).substring(0, MAX_STATUS_CHARS) });
 }
 
+function itemName(name) {
+  return String(name).substring(0, MAX_NAME_CHARS);
+}
+
+function itemMessage(type, id, name, state) {
+  return {
+    'ITEM_TYPE': type,
+    'ITEM_ID': String(id),
+    'ITEM_NAME': itemName(name),
+    'ITEM_STATE': state ? 1 : 0
+  };
+}
+
+function sendItems(sockets, groups) {
+  // Groups first so a large socket list can't crowd them out of the cap.
+  var out = [];
+  var truncated = false;
+  var pushItem = function(msg) {
+    if (msg['ITEM_ID'].length > MAX_ID_CHARS) {
+      return; // id wouldn't round-trip through the watch's buffer intact
+    }
+    if (out.length >= MAX_WATCH_ITEMS) {
+      truncated = true;
+      return;
+    }
+    out.push(msg);
+  };
+  groups.forEach(function(group) {
+    pushItem(itemMessage(1, group.id, group.name, false));
+  });
+  sockets.forEach(function(socket) {
+    if (socket.readonly) {
+      return; // sensors — no on/off commands
+    }
+    pushItem(itemMessage(0, socket.id, socket.name, socket.state));
+  });
+
+  queueMessage({ 'SYNC_START': 1, 'STATUS': 'Syncing...' });
+  out.forEach(queueMessage);
+  queueMessage({ 'SYNC_DONE': 1,
+                 'STATUS': truncated ? 'List cut at 32' : 'Connected' });
+}
+
+var s_refreshing = false;
+
 function refresh() {
+  if (s_refreshing) {
+    return; // watch REQUEST_SYNC + JS 'ready' both fire at launch; run once
+  }
   var cfg = loadConfig();
   if (!cfg.host) {
-    sendStatus('Open settings to configure');
+    sendStatus('Config needed');
     return;
   }
-  sendStatus('Syncing...');
+  s_refreshing = true;
   apiRequest(cfg, 'GET', '/api/sockets', function(sockErr, sockets) {
     if (sockErr) {
-      sendStatus('Error: ' + sockErr.message);
+      s_refreshing = false;
+      sendStatus(sockErr.message);
       return;
     }
     apiRequest(cfg, 'GET', '/api/groups', function(groupErr, groups) {
+      s_refreshing = false;
       if (groupErr) {
-        sendStatus('Error: ' + groupErr.message);
+        sendStatus(groupErr.message);
         return;
       }
       sendItems(sockets || [], groups || []);
@@ -144,16 +192,26 @@ function refresh() {
 function toggle(type, id) {
   var cfg = loadConfig();
   if (!cfg.host) {
-    sendStatus('Open settings to configure');
+    sendStatus('Config needed');
     return;
   }
   var path = (type === 1 ? '/api/groups/' : '/api/sockets/') + encodeURIComponent(id) + '/toggle';
-  apiRequest(cfg, 'POST', path, function(err) {
+  apiRequest(cfg, 'POST', path, function(err, body) {
     if (err) {
-      sendStatus('Toggle failed: ' + err.message);
+      sendStatus(err.message);
       return;
     }
-    refresh();
+    if (type === 0 && body && body.id) {
+      // Socket toggle returns the updated socket — patch just that row
+      // instead of re-syncing everything.
+      var msg = itemMessage(0, body.id, body.name, body.state);
+      msg['STATUS'] = 'Connected';
+      queueMessage(msg);
+    } else {
+      // A group toggle changes many sockets; a full re-sync is the only
+      // way to learn their new states.
+      refresh();
+    }
   });
 }
 
@@ -184,10 +242,13 @@ function configHtml(cfg) {
 }
 
 function escapeAttr(value) {
-  return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;').replace(/</g, '&lt;');
 }
 
 Pebble.addEventListener('ready', function() {
+  // The watch also sends REQUEST_SYNC on launch; s_refreshing dedups the
+  // two triggers. Both stay because either side can come up first.
   refresh();
 });
 
@@ -214,6 +275,6 @@ Pebble.addEventListener('webviewclosed', function(e) {
     saveConfig(cfg);
     refresh();
   } catch (err) {
-    sendStatus('Settings not saved');
+    sendStatus('Save failed');
   }
 });

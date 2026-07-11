@@ -18,11 +18,15 @@ Watch (C, MenuLayer) <--AppMessage/BT--> Phone (PebbleKit JS) <--HTTPS--> HomeHu
   (and whenever the watch asks) it fetches `GET /api/sockets` and
   `GET /api/groups` from HomeHub and streams the results to the watch as a
   series of `ITEM_*` AppMessages bracketed by `SYNC_START`/`SYNC_DONE`.
-- Selecting a row on the watch sends `TOGGLE_TYPE`/`TOGGLE_ID`; the phone
-  calls `POST /api/sockets/{id}/toggle` or `POST /api/groups/{id}/toggle`
-  and then re-syncs.
+- Selecting a row on the watch sends `TOGGLE_TYPE`/`TOGGLE_ID`. For a
+  socket, the phone POSTs the toggle and patches just that row from the
+  response; for a group (which changes many sockets) it runs a full
+  re-sync.
 - A one-line status banner above the menu shows sync/connection state
-  (`Syncing...`, `Connected`, `Error: ...`).
+  (`Syncing...`, `Connected`, `Timeout`, `HTTP 401`, ...). Statuses are
+  kept short so they fit the narrow chord at the top of the round display.
+- Read-only HomeHub devices (sensors) are filtered out on the phone side —
+  the watch only lists things it can actually switch.
 
 ## Configuration
 
@@ -76,5 +80,11 @@ to `targetPlatforms` in `package.json` and rebuilding. See the repo
 - No per-group on/off indicator on the watch: HomeHub's `Group` has no
   aggregate state (it's just a named list of socket IDs), so group rows
   show only a name, not On/Off.
+- The watch list is capped at 32 items (groups win over sockets when over
+  the cap) and names at 31 chars; the status banner says `List cut at 32`
+  when truncation happens.
+- Sync streams one item per AppMessage (~34 BLE round trips for a full
+  list). Fine at household scale; batching several items per message is
+  the obvious optimization if it ever feels slow.
 - No offline caching — reopening the app with no phone/HomeHub connection
   shows an error status and an empty menu until sync succeeds.

@@ -23,6 +23,11 @@ static HomeHubItem s_items[MAX_ITEMS];
 static int s_item_count = 0;
 static char s_status_text[STATUS_LEN] = "Connecting...";
 
+// Items are only appended between SYNC_START and SYNC_DONE; an ITEM message
+// outside that window is a targeted state update for one existing row.
+static bool s_sync_active = false;
+static bool s_overflowed = false;
+
 static uint16_t count_type(uint8_t type) {
   uint16_t count = 0;
   for (int i = 0; i < s_item_count; i++) {
@@ -54,6 +59,8 @@ static void request_sync(void) {
   }
 }
 
+// Statuses render near the top of the round display where the drawable
+// chord is narrow — keep them short (~14 chars).
 static void set_status(const char *text) {
   strncpy(s_status_text, text, STATUS_LEN - 1);
   s_status_text[STATUS_LEN - 1] = '\0';
@@ -109,9 +116,22 @@ static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, v
     dict_write_cstring(iter, MESSAGE_KEY_TOGGLE_ID, item->id);
     app_message_outbox_send();
     set_status("Toggling...");
+    vibes_short_pulse();
+  } else {
+    // Outbox still busy with the previous message — nothing was sent, so
+    // no vibe: a buzz here would fake a confirmation.
+    set_status("Busy, retry");
   }
+}
 
-  vibes_short_pulse();
+static void store_item(HomeHubItem *item, Tuple *id_tuple, Tuple *type_tuple,
+                       Tuple *name_tuple, Tuple *state_tuple) {
+  strncpy(item->id, id_tuple->value->cstring, ID_LEN - 1);
+  item->id[ID_LEN - 1] = '\0';
+  strncpy(item->name, name_tuple ? name_tuple->value->cstring : "?", NAME_LEN - 1);
+  item->name[NAME_LEN - 1] = '\0';
+  item->type = type_tuple ? type_tuple->value->uint8 : TYPE_SOCKET;
+  item->state = state_tuple ? state_tuple->value->uint8 != 0 : false;
 }
 
 static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
@@ -120,35 +140,63 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
     set_status(status_tuple->value->cstring);
   }
 
-  Tuple *sync_start_tuple = dict_find(iterator, MESSAGE_KEY_SYNC_START);
-  if (sync_start_tuple) {
+  bool dirty = false;
+
+  if (dict_find(iterator, MESSAGE_KEY_SYNC_START)) {
+    s_sync_active = true;
+    s_overflowed = false;
     s_item_count = 0;
+    dirty = true;
   }
 
   Tuple *id_tuple = dict_find(iterator, MESSAGE_KEY_ITEM_ID);
-  if (id_tuple && s_item_count < MAX_ITEMS) {
+  if (id_tuple) {
     Tuple *type_tuple = dict_find(iterator, MESSAGE_KEY_ITEM_TYPE);
     Tuple *name_tuple = dict_find(iterator, MESSAGE_KEY_ITEM_NAME);
     Tuple *state_tuple = dict_find(iterator, MESSAGE_KEY_ITEM_STATE);
 
-    HomeHubItem *item = &s_items[s_item_count];
-    strncpy(item->id, id_tuple->value->cstring, ID_LEN - 1);
-    item->id[ID_LEN - 1] = '\0';
-    strncpy(item->name, name_tuple ? name_tuple->value->cstring : "?", NAME_LEN - 1);
-    item->name[NAME_LEN - 1] = '\0';
-    item->type = type_tuple ? type_tuple->value->uint8 : TYPE_SOCKET;
-    item->state = state_tuple ? state_tuple->value->uint8 != 0 : false;
-    s_item_count++;
+    if (s_sync_active) {
+      if (s_item_count < MAX_ITEMS) {
+        store_item(&s_items[s_item_count], id_tuple, type_tuple, name_tuple, state_tuple);
+        s_item_count++;
+        dirty = true;
+      } else {
+        s_overflowed = true;
+      }
+    } else {
+      // Targeted update (e.g. after a toggle): patch the matching row.
+      uint8_t type = type_tuple ? type_tuple->value->uint8 : TYPE_SOCKET;
+      for (int i = 0; i < s_item_count; i++) {
+        if (s_items[i].type == type &&
+            strcmp(s_items[i].id, id_tuple->value->cstring) == 0) {
+          store_item(&s_items[i], id_tuple, type_tuple, name_tuple, state_tuple);
+          dirty = true;
+          break;
+        }
+      }
+    }
   }
 
-  Tuple *sync_done_tuple = dict_find(iterator, MESSAGE_KEY_SYNC_DONE);
-  if (sync_done_tuple || id_tuple || sync_start_tuple) {
+  if (dict_find(iterator, MESSAGE_KEY_SYNC_DONE)) {
+    s_sync_active = false;
+    dirty = true;
+    if (s_overflowed) {
+      set_status("List cut at 32");
+    }
+  }
+
+  if (dirty && s_menu_layer) {
     menu_layer_reload_data(s_menu_layer);
   }
 }
 
 static void inbox_dropped_callback(AppMessageResult reason, void *context) {
-  set_status("Message dropped");
+  // A dropped message mid-sync leaves the list incomplete (or a dropped
+  // SYNC_START would leave it stale) — abandon this sync and ask for a
+  // fresh one rather than showing silently wrong data.
+  s_sync_active = false;
+  set_status("Resyncing...");
+  request_sync();
 }
 
 static void outbox_failed_callback(DictionaryIterator *iterator, AppMessageResult reason,
@@ -161,8 +209,11 @@ static void prv_window_load(Window *window) {
   GRect bounds = layer_get_bounds(window_layer);
 
   const int16_t status_height = 20;
+  // Inset the banner from the top of the round display so short statuses
+  // land on a wide-enough chord to render fully.
+  const int16_t status_top = PBL_IF_ROUND_ELSE(bounds.size.h / 15, 0);
   s_status_layer = text_layer_create(
-      GRect(0, PBL_IF_ROUND_ELSE(6, 0), bounds.size.w, status_height));
+      GRect(0, status_top, bounds.size.w, status_height));
   text_layer_set_background_color(s_status_layer, GColorClear);
   text_layer_set_text_color(s_status_layer, GColorWhite);
   text_layer_set_font(s_status_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));
@@ -170,7 +221,7 @@ static void prv_window_load(Window *window) {
   text_layer_set_text(s_status_layer, s_status_text);
   layer_add_child(window_layer, text_layer_get_layer(s_status_layer));
 
-  int16_t menu_top = PBL_IF_ROUND_ELSE(6, 0) + status_height;
+  int16_t menu_top = status_top + status_height;
   s_menu_layer = menu_layer_create(
       GRect(0, menu_top, bounds.size.w, bounds.size.h - menu_top));
   menu_layer_set_callbacks(s_menu_layer, NULL, (MenuLayerCallbacks) {
@@ -189,7 +240,9 @@ static void prv_window_load(Window *window) {
 
 static void prv_window_unload(Window *window) {
   menu_layer_destroy(s_menu_layer);
+  s_menu_layer = NULL;
   text_layer_destroy(s_status_layer);
+  s_status_layer = NULL;
 }
 
 static void prv_init(void) {

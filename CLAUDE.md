@@ -57,14 +57,24 @@ Why not `pebble sdk install latest`? The web container's network policy blocks
 `sdk.repebble.com`; the script installs equivalent pieces from PyPI, GitHub
 (git protocol), and apt instead.
 
+## Repo layout
+
+- `watchfaces/` — one directory per watchface/app (see `watchfaces/hello-time/`).
+  New projects go here.
+- `os/` — pointer to the PebbleOS fork. The firmware source is NOT vendored
+  in this repo: it lives in its own GitHub fork (of `coredevices/PebbleOS`)
+  and is cloned on demand into `os/PebbleOS/` (gitignored) via `os/clone.sh`.
+  Commit OS work in the fork's repo, never here; small not-yet-landed patches
+  can be tracked in `os/patches/`. See `os/README.md`.
+- `samples/`, `tutorials/` — upstream reference material from the
+  pebble-watchface skill; don't put new projects there.
+
 ## Building
 
 ```bash
-cd <project-dir>
+cd watchfaces/<project-dir>
 pebble build          # produces build/<project>.pbw
 ```
-
-Each watchface/app lives in its own top-level directory (see `hello-time/`).
 
 ## Emulator limitation in this environment
 

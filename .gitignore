@@ -2,6 +2,9 @@
 build/
 .lock-waf*
 
+# PebbleOS source (lives in its own fork repo; cloned via os/clone.sh)
+os/PebbleOS/
+
 # Python
 __pycache__/
 *.pyc

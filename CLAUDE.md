@@ -19,8 +19,10 @@ mirror we install from (`coredevices/sdk-core`, see below) has no `gabbro`
 platform, and the official Round 2 SDK is only distributed via
 `sdk.repebble.com`, which the web container's network policy blocks. Do NOT
 add `"gabbro"` to `targetPlatforms` until a gabbro-capable SDK is
-installable here (re-check `git ls-remote coredevices/sdk-core` for updates
-occasionally). Until then, **write gabbro-ready code**:
+installable here — `scripts/check-gabbro-sdk.sh` checks both install paths
+(the SessionStart hook runs it, so watch its output at session start). When
+it reports gabbro available, follow `ROUND2.md` (the day-one porting
+checklist). Until then, **write gabbro-ready code**:
 
 - Derive every position from `layer_get_bounds()` — never hardcode 180/90.
   Both devices are round, so `PBL_IF_ROUND_ELSE`/`#if PBL_ROUND` picks the

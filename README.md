@@ -4,7 +4,10 @@ Watchfaces and apps for my **Pebble Time Round** (platform `chalk`, 180x180
 round color), built with Claude Code and the [pebble-watchface agent skill](https://github.com/coredevices/pebble-watchface-agent-skill)
 (installed in `.claude/skills/pebble-watchface`).
 
-- **Device/target:** Pebble Time Round → `chalk` (see `CLAUDE.md`)
+- **Device/target:** Pebble Time Round → `chalk` (see `CLAUDE.md`);
+  Pebble Round 2 (`gabbro`) on order — [`ROUND2.md`](ROUND2.md) is the
+  day-one checklist, `./scripts/check-gabbro-sdk.sh` reports when a
+  gabbro SDK becomes installable
 - **Setup:** `./scripts/setup-sdk.sh` (runs automatically in Claude Code web sessions via a SessionStart hook)
 - **Build:** `cd watchfaces/<project> && pebble build` → `build/<project>.pbw`
 - **Install on watch:** sideload the `.pbw` with the Pebble phone app, or `pebble install --phone <ip>`

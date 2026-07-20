@@ -1,0 +1,37 @@
+From 91cc1d80c806294b994092e9b2dc0ff42f4f95aa Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 11 Jul 2026 08:36:54 +0000
+Subject: [PATCH 1/2] apps/tictoc: use custom hand colors on gabbro round face
+
+Give the default TicToc watchface on Pebble Round 2 a personal touch:
+yellow minute hand and a cerulean center bob instead of the stock
+all-white hands with red bob.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_0193EzyJ5pjQDBAgPjUoy4xn
+Signed-off-by: Claude <noreply@anthropic.com>
+---
+ src/fw/apps/watch/tictoc/round/watch_model.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/fw/apps/watch/tictoc/round/watch_model.h b/src/fw/apps/watch/tictoc/round/watch_model.h
+index 12201c18..5cac66fb 100644
+--- a/src/fw/apps/watch/tictoc/round/watch_model.h
++++ b/src/fw/apps/watch/tictoc/round/watch_model.h
+@@ -17,11 +17,11 @@
+ 
+ #define LOCAL_MINUTE_HAND_LENGTH_DEFAULT 84
+ #define LOCAL_MINUTE_HAND_THICKNESS_DEFAULT 9
+-#define LOCAL_MINUTE_HAND_COLOR_DEFAULT GColorWhite
++#define LOCAL_MINUTE_HAND_COLOR_DEFAULT GColorChromeYellow
+ #define LOCAL_MINUTE_HAND_BACK_EXT_DEFAULT 0
+ 
+ #define LOCAL_BOB_RADIUS_DEFAULT 9
+-#define LOCAL_BOB_COLOR_DEFAULT GColorRed
++#define LOCAL_BOB_COLOR_DEFAULT GColorVividCerulean
+ 
+ #define LOCAL_TEXT_OFFSET 60
+ #define LOCAL_TEXT_COLOR GColorWhite
+-- 
+2.43.0
+

@@ -1,0 +1,31 @@
+From ed5cb05716146787d16b497f527477330d84b31f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 11 Jul 2026 08:36:54 +0000
+Subject: [PATCH 2/2] third_party/hal_sifli: don't error on maybe-uninitialized
+
+GCC 13 flags bt_rf_fulcal.c in the SiFli vendor SDK with
+-Werror=maybe-uninitialized, breaking the build on toolchains other
+than the bundled ARM GNU 14. Demote it to a warning for the vendor
+library only.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_0193EzyJ5pjQDBAgPjUoy4xn
+Signed-off-by: Claude <noreply@anthropic.com>
+---
+ third_party/hal_sifli/wscript_build | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/third_party/hal_sifli/wscript_build b/third_party/hal_sifli/wscript_build
+index 42a2dc97..3c99b231 100644
+--- a/third_party/hal_sifli/wscript_build
++++ b/third_party/hal_sifli/wscript_build
+@@ -208,5 +208,6 @@ bld.stlib(
+         '-Wno-unused-but-set-variable',
+         '-Wno-sign-compare',
+         '-Wno-type-limits',
++        '-Wno-error=maybe-uninitialized',
+     ],
+ )
+-- 
+2.43.0
+
